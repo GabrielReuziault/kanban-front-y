@@ -1,42 +1,43 @@
 "use client";
 
 import React, { useState } from "react";
-import User from "@/models/User";
 import { List, Typography, Button, Modal, Form, Input, message } from "antd";
+import User from "@/models/User";
+import API_URLS from "@/constants/api.url";
+import { randomUUID } from "crypto";
+import HttpService from "@/services/HttpService";
 
 const { Title } = Typography;
 
-const UsersComponent = ({ ...props }: { users: User[] }) => {
-    const [users, setUsers] = useState<User[]>(props.users);
+const UsersComponent = ({ users: initialUsers }: { users: User[] }) => {
+    const [users, setUsers] = useState<User[]>(initialUsers);
     const [isModalVisible, setIsModalVisible] = useState(false);
-
     const [form] = Form.useForm();
 
-    const showModal = () => {
-        setIsModalVisible(true);
+    const toggleModal = (show: boolean) => {
+        setIsModalVisible(show);
+        if (!show) form.resetFields();
     };
 
-    const closeModal = () => {
-        setIsModalVisible(false);
-        form.resetFields();
-    };
+    const handleAddUser = async () => {
+        try {
+            const values = await form.validateFields();
+            const newUser: User = { id: randomUUID, ...values };
 
-    const handleAddUser = () => {
-        form
-            .validateFields()
-            .then((values) => {
-                const newUser: User = {
-                    id: Math.random().toString(36).substr(2, 9),
-                    username: values.username,
-                    email: values.email,
-                };
-                setUsers([...users, newUser]); // Ajouter le nouvel utilisateur
-                closeModal(); // Fermer le modal
-                message.success("Utilisateur ajouté avec succès !");
-            })
-            .catch((info) => {
-                console.error("Validation échouée :", info);
-            });
+            const response = await HttpService.post(API_URLS.users, newUser);
+            console.log(response);
+
+
+            if (!response) throw new Error("Erreur lors de l'ajout de l'utilisateur.");
+
+            setUsers([...users, newUser]);
+            message.success("Utilisateur ajouté avec succès !");
+            toggleModal(false);
+            await HttpService.get(API_URLS.users);
+        } catch (error) {
+            console.error("Erreur :", error);
+            message.error("Impossible d'ajouter l'utilisateur. Merci de réessayer.");
+        }
     };
 
     return (
@@ -54,34 +55,37 @@ const UsersComponent = ({ ...props }: { users: User[] }) => {
                 <Title level={2}>Users List</Title>
             </div>
 
-            <Button type="primary" onClick={showModal} style={{ marginBottom: "20px" }}>
+            <Button type="primary" onClick={() => toggleModal(true)} style={{ marginBottom: "20px" }}>
                 Ajouter un utilisateur
             </Button>
 
             <List
-                dataSource={users}
                 bordered
+                dataSource={users}
                 style={{
                     background: "#ffffff",
                     borderRadius: "8px",
                 }}
                 header={<Title level={4}>Users ({users.length})</Title>}
-                renderItem={(user: User) => (
+                renderItem={(user) => (
                     <List.Item key={user.id}>
-                        <strong>{user.username}</strong> <br/> <span>{user.email}</span>
+            <span>
+              <strong>{user.username}</strong> <br />
+                {user.email}
+            </span>
                     </List.Item>
                 )}
             />
 
             <Modal
                 title="Ajouter un utilisateur"
-                visible={isModalVisible}
+                open={isModalVisible}
+                onOk={handleAddUser}
+                onCancel={() => toggleModal(false)}
                 okText="Ajouter"
                 cancelText="Annuler"
-                onCancel={closeModal}
-                onOk={handleAddUser}
             >
-                <Form form={form} layout="vertical" name="add_user_form">
+                <Form form={form} layout="vertical">
                     <Form.Item
                         name="username"
                         label="Nom d'utilisateur"
@@ -98,6 +102,20 @@ const UsersComponent = ({ ...props }: { users: User[] }) => {
                         ]}
                     >
                         <Input placeholder="Entrez l'email" />
+                    </Form.Item>
+                    <Form.Item
+                        name="firstname"
+                        label="Prénom"
+                        rules={[{ required: true, message: "Veuillez entrer prénom." }]}
+                    >
+                        <Input placeholder="Entrez votre prénom" />
+                    </Form.Item>
+                    <Form.Item
+                        name="lastname"
+                        label="Nom"
+                        rules={[{ required: true, message: "Veuillez entrer nom." }]}
+                    >
+                        <Input placeholder="Entrez votre nom" />
                     </Form.Item>
                 </Form>
             </Modal>
