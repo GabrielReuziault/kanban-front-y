@@ -1,6 +1,6 @@
 export default class HttpService {
-    static async get(url: string,headers?: RequestInit): Promise<any> {
-        const response = await fetch(url,headers);
+    static async get(url: string, headers?: RequestInit): Promise<any> {
+        const response = await fetch(url, headers);
         return await response.json();
     }
 
@@ -17,4 +17,19 @@ export default class HttpService {
         return await response.json();
     }
 
+    static async delete(url: string, headers?: RequestInit): Promise<any> {
+        const response = await fetch(url, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(headers?.headers || {})
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Erreur HTTP : ${response.status}`);
+        }
+
+        return await response.json();
+    }
 }
